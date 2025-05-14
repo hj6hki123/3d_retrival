@@ -20,8 +20,8 @@ from   torch.utils.data import Dataset, DataLoader
 from   torchvision import transforms
 from   PIL import Image
 
-from rag_text_encoder  import RAGTextEncoder     # noqa
-from gf_mv_encoder     import GFMVEncoder        # noqa
+from CAMERA_3D.models.rag_text_encoder  import RAGTextEncoder     # noqa
+from CAMERA_3D.models.gf_mv_encoder     import GFMVEncoder        # noqa
 from semantic_memory   import SemanticMemory     # noqa
 
 # ════════════════════════════════════════════════════════════════════════
