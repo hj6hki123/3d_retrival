@@ -1,0 +1,32 @@
+# 編譯或暫存檔
+*.pyc
+*.index
+*.meta
+*.json
+*.jsonl
+**/__pycache__/
+*.log
+*.tmp
+**/data/
+objaverse-rendering
+**/wandb/
+**/models/
+**/gallery/
+MHSAN/modelnet40-princeton-3d-object-dataset
+MHSAN/tokenizer_model/
+data/MNIST/
+data/cifar-10-batches-py/
+data/cifar-100-python/
+# VSCode 設定
+.vscode/
+
+# Python 環境
+venv/
+.env
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# 系統檔案
+.DS_Store
+Thumbs.db
