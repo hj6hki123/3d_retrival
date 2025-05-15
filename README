@@ -1,5 +1,6 @@
 python train_two_stage.py \
-  --data_jsonl  CAMERA_3D/datasets/unified_data.jsonl \
-  --corpus      CAMERA_3D/datasets/semantic_corpus.json \
-  --out         CAMERA_3D/ckpts \
-  --bs 16 --views 12 --ep1 8 --ep2 5
+--data_jsonl datasets/unified_data.jsonl \
+--corpus     datasets/semantic_corpus.jsonl \
+--out        ckpts \
+--bs 4 --views 12 \
+--ep1 8  --ep2 5
