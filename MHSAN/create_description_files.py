@@ -10,7 +10,7 @@ def create_description_files(root_dir):
         if not os.path.isdir(category_path):
             continue
 
-        # 對每個分割資料夾，通常是 "train" 與 "test"
+        # 對每個分割資料夾,通常是 "train" 與 "test"
         for split in ["train", "test"]:
             split_path = os.path.join(category_path, split)
             if not os.path.exists(split_path):
@@ -24,11 +24,11 @@ def create_description_files(root_dir):
 
                 # description.txt 的完整路徑
                 desc_path = os.path.join(obj_path, "description.txt")
-                # # 若檔案已存在，就跳過
+                # # 若檔案已存在,就跳過
                 # if os.path.exists(desc_path):
                 #     continue
 
-                # 產生描述文字，你可以修改成你想要的描述內容
+                # 產生描述文字,你可以修改成你想要的描述內容
                 text = f"{category}"
                 map_list.add(text)
                 # 寫入檔案

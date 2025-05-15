@@ -32,7 +32,7 @@ def plot_tsne(features, labels, class_names, num_classes=40):
     
     for i in range(num_classes):
         idx = labels == i  # 找出屬於類別 i 的樣本
-        if np.sum(idx) == 0:  # 如果該類別沒有樣本，跳過
+        if np.sum(idx) == 0:  # 如果該類別沒有樣本,跳過
             continue
         
         # **畫出該類別的點**
@@ -57,7 +57,7 @@ def plot_tsne(features, labels, class_names, num_classes=40):
     #plt.show()
 def plot_class_accuracy(class_accuracy, class_names):
     """
-    繪製每個類別的準確率，並標示類別名稱
+    繪製每個類別的準確率,並標示類別名稱
     :param class_accuracy: 每個類別的準確率 (list 或 numpy array)
     :param class_names: ModelNet40 的類別名稱 (list)
     """
@@ -68,7 +68,7 @@ def plot_class_accuracy(class_accuracy, class_names):
     plt.xlabel("Class Name")  # 設定 X 軸標籤
     plt.ylabel("Accuracy")
     plt.title("Per-Class Accuracy")
-    plt.xticks(rotation=90)  # 讓類別名稱旋轉 90 度，避免重疊
+    plt.xticks(rotation=90)  # 讓類別名稱旋轉 90 度,避免重疊
     plt.ylim(0, 1)  # 限制在 0% 到 100%
 
     # **存檔**
@@ -79,10 +79,10 @@ def plot_class_accuracy(class_accuracy, class_names):
 
 def compute_class_distances(features, labels, class_names, metric="euclidean", normalize_method="zscore", top_k=5):
     """
-    計算不同類別之間的平均距離，找出最容易混淆的前 K 個類別對。
+    計算不同類別之間的平均距離,找出最容易混淆的前 K 個類別對。
     
-    :param features: (N, D) numpy array，N 為樣本數，D 為特徵維度
-    :param labels: (N,) numpy array，每個樣本的類別標籤
+    :param features: (N, D) numpy array,N 為樣本數,D 為特徵維度
+    :param labels: (N,) numpy array,每個樣本的類別標籤
     :param class_names: 類別名稱列表
     :param metric: "euclidean"（歐幾里得距離）或 "cosine"（餘弦相似度）
     :param normalize_method: "zscore"（標準化）或 "l2"（L2 正規化）
@@ -114,7 +114,7 @@ def compute_class_distances(features, labels, class_names, metric="euclidean", n
         raise ValueError("metric 必須是 'euclidean' 或 'cosine'")
 
     # **找出前 K 個距離最短的類別對**
-    np.fill_diagonal(dist_matrix, np.inf)  # 讓自己對自己的距離設為無限大，避免干擾
+    np.fill_diagonal(dist_matrix, np.inf)  # 讓自己對自己的距離設為無限大,避免干擾
     flat_indices = np.argsort(dist_matrix, axis=None)[:top_k]  # 找出最小的前 K 個索引
     row_indices, col_indices = np.unravel_index(flat_indices, dist_matrix.shape)  # 轉換為矩陣索引
 
@@ -123,7 +123,7 @@ def compute_class_distances(features, labels, class_names, metric="euclidean", n
 
     print("最容易混淆的前 5 個類別對：")
     for i, (class1, class2, dist) in enumerate(top_k_pairs):
-        print(f"  {i+1}. ({class1}, {class2})，距離 = {dist:.4f}")
+        print(f"  {i+1}. ({class1}, {class2}),距離 = {dist:.4f}")
 
     return dist_matrix, top_k_pairs
 
@@ -159,7 +159,7 @@ def compute_class_distances(features, labels, class_names, metric="euclidean", n
     else:
         raise ValueError("metric 必須是 'euclidean' 或 'cosine'")
 
-    # **只選擇上三角矩陣，避免重複**
+    # **只選擇上三角矩陣,避免重複**
     triu_indices = np.triu_indices(num_classes, k=1)  # 取得上三角矩陣索引（不包含對角線）
     dist_values = dist_matrix[triu_indices]  # 取得對應的距離值
 
@@ -172,7 +172,7 @@ def compute_class_distances(features, labels, class_names, metric="euclidean", n
 
     print("最容易混淆的前 5 個類別對（不重複）：")
     for i, (class1, class2, dist) in enumerate(top_k_pairs):
-        print(f"  {i+1}. ({class1}, {class2})，距離 = {dist:.4f}")
+        print(f"  {i+1}. ({class1}, {class2}),距離 = {dist:.4f}")
 
     return dist_matrix, top_k_pairs
 
@@ -277,7 +277,7 @@ if __name__ == "__main__":
     plot_class_accuracy(class_accuracy, class_names)
     
     # **計算類別間距離**
-    # 計算類別間距離，找出前 5 個最容易混淆的類別
+    # 計算類別間距離,找出前 5 個最容易混淆的類別
     dist_matrix, top_5_pairs = compute_class_distances(features, labels, class_names, metric="cosine",normalize_method="L2", top_k=5)
 
 

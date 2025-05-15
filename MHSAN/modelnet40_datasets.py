@@ -34,7 +34,7 @@ class ModelNet40Dataset(Dataset):
                 )
                 if len(view_images) == num_views:
                     self.data.append((view_images, class_idx))
-        print(f"載入 {self.split} 數據集: {len(self.data)} 筆資料，類別數: {len(self.categories)}")
+        print(f"載入 {self.split} 數據集: {len(self.data)} 筆資料,類別數: {len(self.categories)}")
 
     def __len__(self):
         return len(self.data)

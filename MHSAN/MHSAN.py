@@ -101,7 +101,7 @@ class MHSAN(nn.Module):
         for layer in self.self_attn_layers1:
             x = layer(x)
 
-        # **計算視角分類分數，選擇最重要的視角**
+        # **計算視角分類分數,選擇最重要的視角**
         classification_scores = x[:, 1:, :].mean(dim=-1)  # (batch, num_views)
         top_k_indices = classification_scores.topk(self.top_k, dim=1).indices
         selected_views = torch.cat([x[:, :1, :], torch.gather(x[:, 1:, :], 1, top_k_indices.unsqueeze(-1).expand(-1, -1, self.embed_dim))], dim=1)

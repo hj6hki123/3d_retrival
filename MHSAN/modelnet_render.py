@@ -25,7 +25,7 @@ def get_look_at(eye, target=np.array([0,0,0]), up=np.array([0,0,1])):
 
 def get_camera_positions(num_views):
     if num_views == 12:
-        # **12 視角 (30° 高度，360° 均勻分佈)**
+        # **12 視角 (30° 高度,360° 均勻分佈)**
         angles = np.linspace(0, 360, num_views, endpoint=False)
         positions = []
         for angle in angles:
@@ -52,7 +52,7 @@ def render_views(off_path, output_folder, num_views=12):
     # 載入 3D 物件並確保重心對齊
     mesh = trimesh.load_mesh(off_path, process=True, maintain_order=True)
     if mesh.vertices.shape[0] == 0:
-        print(f"警告: 檔案 {off_path} 無頂點資料，跳過。")
+        print(f"警告: 檔案 {off_path} 無頂點資料,跳過。")
         return
     mesh.fix_normals()
 
@@ -69,7 +69,7 @@ def render_views(off_path, output_folder, num_views=12):
     max_dim = np.max(bbox)
     mesh.apply_scale(1.0 / max_dim)  # 縮放至標準大小
 
-    # 建立 Scene，移除背景色設定（採用預設）
+    # 建立 Scene,移除背景色設定（採用預設）
     scene = pyrender.Scene()
     scene.add(pyrender.Mesh.from_trimesh(mesh))
 
@@ -84,7 +84,7 @@ def render_views(off_path, output_folder, num_views=12):
     # 取得相機位置
     positions = get_camera_positions(num_views)
     for i, pos in enumerate(positions):
-        # 調整相機距離倍率從 2.0 改成 1.5，使物件看起來較大
+        # 調整相機距離倍率從 2.0 改成 1.5,使物件看起來較大
         eye = pos * 1 
         camera_pose = get_look_at(eye, target=np.array([0, 0, 0]), up=np.array([0, 0, 1]))
         camera_node = scene.add(camera, pose=camera_pose)

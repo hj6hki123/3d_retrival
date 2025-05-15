@@ -38,7 +38,7 @@ class DenseRetriever(torch.nn.Module):
                 self.memory_vec = torch.nn.Parameter(vecs)
                 return
             else:
-                print("! cache size mismatch，重算向量…")
+                print("! cache size mismatch,重算向量…")
 
         # ------- 首次批次編碼 (CPU or GPU) ----------------------------------
         vecs = []
@@ -72,7 +72,7 @@ class DenseRetriever(torch.nn.Module):
     def forward(self, q_list, obj_ids=None, topk=4):
         """
         q_list : List[str]   查詢句
-        obj_ids: List[str]   同 batch 真實 obj_id，用來計算 NLL
+        obj_ids: List[str]   同 batch 真實 obj_id,用來計算 NLL
         topk   : int         返回前 k 個語境
         -------------------------------------------------------------
         return:

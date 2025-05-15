@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 RAGTextEncoder = DenseRetriever + Cross-Fusion
-輸出 text_vec 512 維，並可回傳 retriever NLL
+輸出 text_vec 512 維,並可回傳 retriever NLL
 """
 import torch, torch.nn as nn
 from transformers import AutoTokenizer, AutoModel

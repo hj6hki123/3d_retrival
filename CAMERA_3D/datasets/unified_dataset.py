@@ -36,7 +36,7 @@ class UnifiedDataset(Dataset):
 
         imgs = [self.tr(Image.open(p).convert("RGB")) for p in paths]
 
-        # 若不足 num_views，就把最後一張複製填滿
+        # 若不足 num_views,就把最後一張複製填滿
         while len(imgs) < self.num_views:
             imgs.append(imgs[-1].clone())
         imgs = torch.stack(imgs)

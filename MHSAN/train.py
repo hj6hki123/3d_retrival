@@ -40,7 +40,7 @@ def train(model, train_loader, criterion, optimizer, num_epochs=10, device="cuda
 
         print(f"Epoch {epoch+1}/{num_epochs}, Loss: {total_loss / len(train_loader):.4f}, Train Accuracy: {train_acc:.4f}")
         
-        # 如果提供 test_loader，就做一次測試
+        # 如果提供 test_loader,就做一次測試
         if test_loader is not None:
             test_acc = test(model, test_loader, device=device)
             # log to wandb

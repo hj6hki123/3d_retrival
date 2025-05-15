@@ -48,7 +48,7 @@ class ModelNet40Dataset_text(Dataset):
                 if len(view_images) == num_views and os.path.exists(desc_path):
                     self.data.append((view_images, desc_path, class_idx))
 
-        print(f"載入 {split} 數據集：{len(self.data)} 筆資料，類別數：{len(self.categories)}")
+        print(f"載入 {split} 數據集：{len(self.data)} 筆資料,類別數：{len(self.categories)}")
 
     def __len__(self):
         return len(self.data)
@@ -78,7 +78,7 @@ class ModelNet40Dataset_text(Dataset):
 
             return images_tensor, desc_tensor, label
         else:
-            # 如果是 BERT 或 CLIP，就原樣回傳字串給 collate_fn_transformer
+            # 如果是 BERT 或 CLIP,就原樣回傳字串給 collate_fn_transformer
             return images_tensor, description, label
 
 ################################################################################

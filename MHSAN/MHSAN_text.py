@@ -5,7 +5,7 @@ import numpy as np
 import torchvision.models as models
 from torchvision.models import VGG16_Weights
 
-# 如果要用 BERT/CLIP，需要 transformers
+# 如果要用 BERT/CLIP,需要 transformers
 from transformers import BertModel, CLIPModel
 
 ################################################################################
@@ -149,7 +149,7 @@ class PretrainedCLIPTextEncoder(nn.Module):
         for param in self.clip_model.parameters():
             param.requires_grad = True
         # openai/clip-vit-base-patch32 的 text_features 大約是 512 維
-        self.fc = nn.Identity()  # 如果需要 512 -> 512，可不加
+        self.fc = nn.Identity()  # 如果需要 512 -> 512,可不加
 
     def forward(self, encoded_batch):
         # encoded_batch: dict, e.g. { 'input_ids':..., 'attention_mask':... }
@@ -157,7 +157,7 @@ class PretrainedCLIPTextEncoder(nn.Module):
             input_ids=encoded_batch["input_ids"],
             attention_mask=encoded_batch["attention_mask"]
         )
-        out = self.fc(text_outputs)  # 可能直接 Identity，就輸出 (batch, 512)
+        out = self.fc(text_outputs)  # 可能直接 Identity,就輸出 (batch, 512)
         return out
 
 class LSTMTextEncoder(nn.Module):
@@ -173,7 +173,7 @@ class LSTMTextEncoder(nn.Module):
         # x: (batch, seq_len)
         x = self.embedding(x)
         out, (hn, cn) = self.lstm(x)
-        # 取最後一層最後時間步的 hidden state，如果是 bidirectional，就拼接兩個方向
+        # 取最後一層最後時間步的 hidden state,如果是 bidirectional,就拼接兩個方向
         if self.lstm.bidirectional:
             last_hidden = torch.cat((hn[-2], hn[-1]), dim=1)  # (batch, hidden*2)
         else:

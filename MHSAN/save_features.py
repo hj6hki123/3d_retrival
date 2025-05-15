@@ -54,7 +54,7 @@ with torch.no_grad():
     for images, texts, labels in test_loader:
         images = images.to(device)
 
-        # 若 texts 是 dict，需逐 key 搬到 GPU
+        # 若 texts 是 dict,需逐 key 搬到 GPU
         if isinstance(texts, dict):
             for k in texts: texts[k] = texts[k].to(device)
         else:

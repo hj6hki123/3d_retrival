@@ -95,9 +95,9 @@ async def fetch_missing_fields(url, max_retries=3):
                         # 找出測量名稱所在的 span
                         name_span = m.find("span", class_="pip-product-dimensions__measurement-name")
                         if name_span:
-                            # 取得測量名稱，移除冒號及空白字元
+                            # 取得測量名稱,移除冒號及空白字元
                             key = name_span.get_text(strip=True).replace(":", "")
-                            # 取得該 span 之後的文字節點，作為測量值
+                            # 取得該 span 之後的文字節點,作為測量值
                             value = name_span.next_sibling
                             if value:
                                 value = value.strip()
@@ -129,7 +129,7 @@ async def fetch_missing_fields(url, max_retries=3):
 async def fetch_ikea_data(keyword):
     print(f"🔍 正在查詢 {keyword} 的產品總數...")
 
-    # 先查詢 1 個，取得 `max` 產品數量
+    # 先查詢 1 個,取得 `max` 產品數量
     endpoint = search.search(keyword, limit=1)
     result = await ikea_api.run_async(endpoint)
 
@@ -139,7 +139,7 @@ async def fetch_ikea_data(keyword):
         return []
 
     if "searchResultPage" not in result:
-        print(f"⚠️ API 沒有返回 `searchResultPage`，回傳內容：{json.dumps(result, indent=2)}")
+        print(f"⚠️ API 沒有返回 `searchResultPage`,回傳內容：{json.dumps(result, indent=2)}")
         return []
 
     max_products = result["searchResultPage"]["products"]["main"].get("max", 0)
@@ -148,7 +148,7 @@ async def fetch_ikea_data(keyword):
     # 設定最大獲取數量（避免 API 限制）
     max_limit = min(max_products, 2000)  # 最多 2000 項產品
 
-    print(f"🔍 重新查詢 {keyword}，最多獲取 {max_limit} 項產品...")
+    print(f"🔍 重新查詢 {keyword},最多獲取 {max_limit} 項產品...")
     endpoint = search.search(keyword, limit=max_limit)
     result = await ikea_api.run_async(endpoint)
 
@@ -158,7 +158,7 @@ async def fetch_ikea_data(keyword):
         return []
 
     if "searchResultPage" not in result:
-        print(f"⚠️ API 沒有返回 `searchResultPage`，回傳內容：{json.dumps(result, indent=2)}")
+        print(f"⚠️ API 沒有返回 `searchResultPage`,回傳內容：{json.dumps(result, indent=2)}")
         return []
 
     # 取得產品清單

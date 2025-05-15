@@ -41,7 +41,7 @@
 #                 print(f" Failed to load or process {uid}: {e}")
 #             pbar.update(1)
 
-# print("處理完成，結果已儲存在 furniture_uids.txt")
+# print("處理完成,結果已儲存在 furniture_uids.txt")
 
 
 import multiprocessing

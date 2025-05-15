@@ -32,7 +32,7 @@ def train(model, train_loader, criterion, contrastive_loss_fn, optimizer,
         for images, texts, labels in loop:
             images, labels = images.to(device), labels.to(device)
 
-            # 如果 texts 是 dict (BERT/CLIP)，要把 input_ids, attention_mask 都放到 device
+            # 如果 texts 是 dict (BERT/CLIP),要把 input_ids, attention_mask 都放到 device
             if isinstance(texts, dict):
                 for k in texts:
                     texts[k] = texts[k].to(device)
@@ -78,18 +78,18 @@ def train(model, train_loader, criterion, contrastive_loss_fn, optimizer,
 
         print(f"Epoch {epoch+1}/{num_epochs} | Loss: {total_loss/len(train_loader):.4f} | Train Acc: {train_acc:.4f}")
 
-        # 如果有測試集，做簡單測試
+        # 如果有測試集,做簡單測試
         if test_loader is not None:
             test_acc = test(model, test_loader, device=device)
             wandb.log({"Test Accuracy (per epoch)": test_acc, "epoch": epoch+1})
 
-            # 如果有提升，就儲存模型
+            # 如果有提升,就儲存模型
             if test_acc > best_acc:
                 best_acc = test_acc
                 torch.save(model.state_dict(), save_path)
                 print(f"新最佳模型已儲存 (Acc={best_acc:.4f}) ➜ {save_path}")
 
-    # 最終結束後，再跑一次測試並log
+    # 最終結束後,再跑一次測試並log
     if test_loader is not None:
         test_acc = test(model, test_loader, device=device)
         wandb.log({"Final Test Accuracy": test_acc})

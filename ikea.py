@@ -9,9 +9,9 @@ constants = ikea_api.Constants(country="us", language="en")
 search = ikea_api.Search(constants)
 
 async def fetch_ikea_data():
-    """ 非同步執行 IKEA API 請求，確保獲取最大可能數量的產品 """
+    """ 非同步執行 IKEA API 請求,確保獲取最大可能數量的產品 """
     
-    # 先查詢 1 個，拿到 max 值
+    # 先查詢 1 個,拿到 max 值
     print(" 正在獲取最大產品數量...")
     endpoint = search.search("bed", limit=1)
     result = await ikea_api.run_async(endpoint)
@@ -20,11 +20,11 @@ async def fetch_ikea_data():
     max_products = result["searchResultPage"]["products"]["main"]["max"]
     print(f"產品總數：{max_products}")
 
-    # 設定最大限制，避免超過 API 限制
+    # 設定最大限制,避免超過 API 限制
     max_limit = min(max_products, 2)
 
     # 重新查詢所有可用產品
-    print(f"🔍 重新查詢，最多獲取 {max_limit} 個產品...")
+    print(f"🔍 重新查詢,最多獲取 {max_limit} 個產品...")
     endpoint = search.search("bed", limit=max_limit)
     result = await ikea_api.run_async(endpoint)
 
