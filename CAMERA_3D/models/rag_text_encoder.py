@@ -37,7 +37,10 @@ class RAGTextEncoder(nn.Module):
     def __init__(self, corpus_jsonl, top_k=4):
         super().__init__()
         self.top_k     = top_k
-        self.retriever = DenseRetriever(corpus_jsonl)
+        self.retriever = DenseRetriever(corpus_jsonl,
+                                        dim=768,
+                                        device="cuda",   # ← 開 GPU
+                                        batch=24)        # 視 VRAM 調整
 
         self.fusion    = CrossFusion()
 

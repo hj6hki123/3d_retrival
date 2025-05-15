@@ -1,4 +1,5 @@
 # 編譯或暫存檔
+*.pt
 *.pth
 *.pyc
 *.index

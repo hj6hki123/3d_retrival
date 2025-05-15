@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import os, argparse, torch, faiss, torch.nn.functional as F
 from torch.utils.data import DataLoader
-from tqdm import tqdm                                  # ← NEW
+from tqdm import tqdm                                  
 from datasets.unified_dataset   import UnifiedDataset
 from models.rag_text_encoder    import RAGTextEncoder
 from models.gf_mv_encoder       import GFMVEncoder
