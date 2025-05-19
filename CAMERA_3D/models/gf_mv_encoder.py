@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-GateFusion-MV：Language-Guided Multi-View Encoder
+GateFusion-MV:Language-Guided Multi-View Encoder
 輸入 :  imgs (B,V,C,H,W) , txt_vec (B,512 or None)
 輸出 :  global_vec (B,512) , token_seq (B,V(+2),512)
 """

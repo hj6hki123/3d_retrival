@@ -135,11 +135,11 @@ async def fetch_ikea_data(keyword):
 
     # **檢查 API 回傳內容**
     if not isinstance(result, dict):
-        print(f"❌ API 回傳異常（{keyword}）：{result}")
+        print(f"❌ API 回傳異常（{keyword}）:{result}")
         return []
 
     if "searchResultPage" not in result:
-        print(f"⚠️ API 沒有返回 `searchResultPage`,回傳內容：{json.dumps(result, indent=2)}")
+        print(f"⚠️ API 沒有返回 `searchResultPage`,回傳內容:{json.dumps(result, indent=2)}")
         return []
 
     max_products = result["searchResultPage"]["products"]["main"].get("max", 0)
@@ -154,11 +154,11 @@ async def fetch_ikea_data(keyword):
 
     # **再次檢查 API 回傳內容**
     if not isinstance(result, dict):
-        print(f"❌ API 回傳異常（{keyword}）：{result}")
+        print(f"❌ API 回傳異常（{keyword}）:{result}")
         return []
 
     if "searchResultPage" not in result:
-        print(f"⚠️ API 沒有返回 `searchResultPage`,回傳內容：{json.dumps(result, indent=2)}")
+        print(f"⚠️ API 沒有返回 `searchResultPage`,回傳內容:{json.dumps(result, indent=2)}")
         return []
 
     # 取得產品清單
@@ -166,7 +166,7 @@ async def fetch_ikea_data(keyword):
 
     # **確保回傳的是 list**
     if not isinstance(products, list):
-        print(f"⚠️ API 回傳的產品格式異常（{keyword}）：{json.dumps(result, indent=2)}")
+        print(f"⚠️ API 回傳的產品格式異常（{keyword}）:{json.dumps(result, indent=2)}")
         return []
 
     return products

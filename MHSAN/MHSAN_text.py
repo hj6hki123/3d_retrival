@@ -102,7 +102,7 @@ class MHSAN(nn.Module):
         return output, final_feature
 
 ################################################################################
-# 四種文字編碼器：GRU / BERT / CLIP / LSTM
+# 四種文字編碼器:GRU / BERT / CLIP / LSTM
 ################################################################################
 class TextEncoder(nn.Module):
     """GRU 版文字編碼器 (自定義)"""
@@ -185,7 +185,7 @@ class LSTMTextEncoder(nn.Module):
     
 
 ################################################################################
-# 多模態模型：MHSAN_with_Text
+# 多模態模型:MHSAN_with_Text
 ################################################################################
 class MHSAN_with_Text(nn.Module):
     def __init__(self, mhsan_model, text_encoder):

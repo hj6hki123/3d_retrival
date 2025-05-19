@@ -121,7 +121,7 @@ def compute_class_distances(features, labels, class_names, metric="euclidean", n
     top_k_pairs = [(class_names[row_indices[i]], class_names[col_indices[i]], dist_matrix[row_indices[i], col_indices[i]])
                    for i in range(top_k)]
 
-    print("最容易混淆的前 5 個類別對：")
+    print("最容易混淆的前 5 個類別對:")
     for i, (class1, class2, dist) in enumerate(top_k_pairs):
         print(f"  {i+1}. ({class1}, {class2}),距離 = {dist:.4f}")
 
@@ -170,7 +170,7 @@ def compute_class_distances(features, labels, class_names, metric="euclidean", n
     top_k_pairs = [(class_names[row_indices[i]], class_names[col_indices[i]], dist_matrix[row_indices[i], col_indices[i]])
                    for i in range(top_k)]
 
-    print("最容易混淆的前 5 個類別對（不重複）：")
+    print("最容易混淆的前 5 個類別對（不重複）:")
     for i, (class1, class2, dist) in enumerate(top_k_pairs):
         print(f"  {i+1}. ({class1}, {class2}),距離 = {dist:.4f}")
 

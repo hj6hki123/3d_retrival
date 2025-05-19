@@ -10,10 +10,10 @@ def get_look_at(eye, target=np.array([0,0,0]), up=np.array([0,0,1])):
     # 計算相機座標系的 z 軸（由目標指向眼睛）
     z_axis = eye - target
     z_axis /= np.linalg.norm(z_axis)
-    # x 軸：利用上方向與 z 軸叉乘
+    # x 軸:利用上方向與 z 軸叉乘
     x_axis = np.cross(up, z_axis)
     x_axis /= np.linalg.norm(x_axis)
-    # y 軸：叉乘取得正確的上方向
+    # y 軸:叉乘取得正確的上方向
     y_axis = np.cross(z_axis, x_axis)
     
     mat = np.eye(4)

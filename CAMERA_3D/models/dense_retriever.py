@@ -1,7 +1,7 @@
 # models/dense_retriever.py
 # -*- coding: utf-8 -*-
 """
-DenseRetriever：DPR 風格可微檢索器
+DenseRetriever:DPR 風格可微檢索器
  • GPU/CPU 初始化 + tqdm
  • memory_vec.pt 離線快取
 """
@@ -29,12 +29,12 @@ class DenseRetriever(torch.nn.Module):
         corpus      = [json.loads(l) for l in open(corpus_jsonl) if l.strip()]
         self.texts  = [c["text"] for c in corpus]
         self.obj_ids= [c.get("obj_id") or c.get("id") for c in corpus]
-
+        
         cache_path = corpus_jsonl + ".pt"
         if cache and os.path.exists(cache_path):
             vecs = torch.load(cache_path, map_location="cpu")
             if vecs.size(0) == len(self.texts):
-                print(f"✓  Loaded cached memory_vec ({cache_path})")
+                print(f"Loaded cached memory_vec ({cache_path})")
                 self.memory_vec = torch.nn.Parameter(vecs)
                 return
             else:
@@ -53,7 +53,7 @@ class DenseRetriever(torch.nn.Module):
         vecs = torch.cat(vecs)                               # (N,768)
         if cache:
             torch.save(vecs, cache_path)
-            print(f"✓  Saved memory_vec cache → {cache_path}")
+            print(f"Saved memory_vec cache → {cache_path}")
         self.memory_vec = torch.nn.Parameter(vecs)
 
     # --------------------------------------------------------------------- #
@@ -80,7 +80,7 @@ class DenseRetriever(torch.nn.Module):
           sims    (B,N)      內積相似度 (可用於 loss)
           idx     (B,topk)   top-k 索引
           ctx     List[List[str]]  檢索到的 caption
-          loss    ()         retriever NLL；若 obj_ids=None 為 0
+          loss    ()         retriever NLL;若 obj_ids=None 為 0
         """
         q_vec = self.query_encode(q_list)                    # (B,768)
         sims  = q_vec @ F.normalize(self.memory_vec, 2, -1).T

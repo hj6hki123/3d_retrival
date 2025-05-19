@@ -66,7 +66,7 @@ def top_caption(img: Image.Image, num_cap=10, max_tokens=60):
     return best_cap
 
 # =============================================================
-# 4) 主流程：遍歷 Objaverse 多視角資料夾
+# 4) 主流程:遍歷 Objaverse 多視角資料夾
 # =============================================================
 def caption_dataset(root_dir: str, out_jsonl="objaverse_blip2.jsonl",
                     views=12, num_cap=10):

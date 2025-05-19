@@ -103,7 +103,7 @@ if __name__ == "__main__":
     train_loader = get12_views_dataloader(split="train")
     test_loader = get12_views_dataloader(split="test")
 
-    # 先驗證：是否 train_loader 和 test_loader 真的有相同的數據？
+    # 先驗證:是否 train_loader 和 test_loader 真的有相同的數據？
     train_images, train_labels = next(iter(train_loader))
     test_images, test_labels = next(iter(test_loader))
 

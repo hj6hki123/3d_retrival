@@ -48,7 +48,7 @@ class ModelNet40Dataset_text(Dataset):
                 if len(view_images) == num_views and os.path.exists(desc_path):
                     self.data.append((view_images, desc_path, class_idx))
 
-        print(f"載入 {split} 數據集：{len(self.data)} 筆資料,類別數：{len(self.categories)}")
+        print(f"載入 {split} 數據集:{len(self.data)} 筆資料,類別數:{len(self.categories)}")
 
     def __len__(self):
         return len(self.data)
@@ -65,7 +65,7 @@ class ModelNet40Dataset_text(Dataset):
         with open(desc_path, "r", encoding="utf-8") as f:
             description = f.read().strip()
 
-        # 3) 分三種狀況：GRU/LSTM (自訂 tokenizer)、BERT/CLIP (內建 tokenizer)  
+        # 3) 分三種狀況:GRU/LSTM (自訂 tokenizer)、BERT/CLIP (內建 tokenizer)  
         if self.text_encoder_type in ["gru", "lstm"]:
             if self.tokenizer is None:
                 raise ValueError("在 GRU 模式下必須提供自訂 tokenizer！")

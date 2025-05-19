@@ -6,7 +6,8 @@ RAGTextEncoder = DenseRetriever + Cross-Fusion
 import torch, torch.nn as nn
 from transformers import AutoTokenizer, AutoModel
 from models.dense_retriever import DenseRetriever, retriever_nll
-
+from pathlib import Path
+import json
 
 class FusionBlock(nn.Module):
     def __init__(self, d=768, h=8):
@@ -34,15 +35,28 @@ class CrossFusion(nn.Module):
 
 
 class RAGTextEncoder(nn.Module):
-    def __init__(self, corpus_jsonl, top_k=4):
+    def __init__(self, unified_jsonl, top_k=4):
         super().__init__()
-        self.top_k     = top_k
-        self.retriever = DenseRetriever(corpus_jsonl,
-                                        dim=768,
-                                        device="cuda",   # ← 開 GPU
-                                        batch=24)        # 視 VRAM 調整
+        self.top_k = top_k
 
-        self.fusion    = CrossFusion()
+        # 自動從 unified_data.jsonl 抽出語意 corpus
+        corpus = []
+        for line in open(unified_jsonl):
+            item = json.loads(line)
+            oid = item["obj_id"]
+            for t in item.get("corpus_texts", []):
+                corpus.append({"text": t, "obj_id": oid})
+
+        # 存成暫存 jsonl（僅第一次）
+        temp_path = Path(unified_jsonl).with_name("temp_corpus.jsonl")
+        if not temp_path.exists():
+            with open(temp_path, "w") as f:
+                for c in corpus:
+                    f.write(json.dumps(c) + "\n")
+
+        # 直接從 temp_corpus.jsonl 建 DenseRetriever
+        self.retriever = DenseRetriever(str(temp_path), device="cuda", batch=24)
+        self.fusion = CrossFusion()
 
     def forward(self, q_list, obj_ids=None, return_loss=False):
         q_vec, _, _, ctx, ret_loss = self.retriever(

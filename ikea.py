@@ -18,7 +18,7 @@ async def fetch_ikea_data():
 
     # 取得 `max` 表示所有符合條件的產品數量
     max_products = result["searchResultPage"]["products"]["main"]["max"]
-    print(f"產品總數：{max_products}")
+    print(f"產品總數:{max_products}")
 
     # 設定最大限制,避免超過 API 限制
     max_limit = min(max_products, 2)

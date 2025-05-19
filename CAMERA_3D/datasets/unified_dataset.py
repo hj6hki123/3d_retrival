@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-讀 unified_data.jsonl：
+讀 unified_data.jsonl:
 { "query": str, "obj_id": str, "views": [img paths], "corpus_texts": [...] }
 回傳  query(str)  ,  imgs  (Tensor V,C,H,W)
 """
