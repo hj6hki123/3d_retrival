@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Two‑stage training pipeline for CAMERA_3D
+"""Two-stage training pipeline for CAMERA_3D
 
-    • Stage 1   — joint contrastive pre‑training of RAG Text Encoder & GateFusion‑MV
-    • Stage 2   — FAISS recall + Cross‑modal reranker fine‑tuning
+    • Stage  1   — joint contrastive pre-training of RAG  Text  Encoder & GateFusion-MV
+    • Stage  2   — FAISS recall + Cross-modal reranker fine-tuning
 
-Optional Weights & Biases logging
+Optional Weights & Biases logging
 ---------------------------------
-Pass `--wandb` *and* have the wandb package installed to enable logging.
-Otherwise all wandb calls are safely skipped.
+Pass `--wandb` and have wandb installed to enable logging. Otherwise all wandb calls are no-ops.
 """
-import os, argparse, torch, faiss, torch.nn.functional as F
+import os
+import argparse
+import torch
+import faiss
+import torch.nn.functional as F
+import numpy as np
 from typing import Optional
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -23,23 +27,18 @@ from models.cross_modal_reranker import CrossModalReranker
 # Optional wandb (lazy import + graceful fallback)
 # ---------------------------------------------------------------------------
 try:
-    import wandb  # noqa: F401  (might be unavailable)
-except ImportError:  # pragma: no cover –– allow running without wandb
+    import wandb
+except ImportError:
     wandb = None
 
-_USE_WANDB = False  # runtime flag toggled by wandb_init()
-
+_USE_WANDB = False
 
 def wandb_init(args):
-    """Initialise wandb only when user explicitly passes --wandb and the   
-    library is available. Sets the global _USE_WANDB flag so that later   
-    calls to wb_log() are no‑ops when logging is disabled.
-    """
     global _USE_WANDB
     if args.wandb and wandb is not None:
         wandb.init(
             project="CAMERA3D",
-            name=f"bs{args.bs}_topk{args.topk}_ep{args.ep1 + args.ep2}",
+            name=f"bs{args.bs}_topk{args.topk}_ep{args.ep1+args.ep2}",
             config=vars(args),
         )
         _USE_WANDB = True
@@ -48,124 +47,179 @@ def wandb_init(args):
 
 
 def wb_log(data: dict, step: Optional[int] = None):
-    """Safely log to wandb if *_USE_WANDB* is True."""
     if _USE_WANDB:
         wandb.log(data, step=step)
 
+# ---------------------------------------------------------------------------
+# Visualization: log similarity heatmap to wandb
+# ---------------------------------------------------------------------------
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import io
+from PIL import Image
+
+def log_sim_heatmap(v_vec: torch.Tensor,
+                    t_vec: torch.Tensor,
+                    step: int,
+                    tag: str = "stage1/sim_matrix",
+                    max_show: int = 16):
+    if not _USE_WANDB:
+        return
+    with torch.no_grad():
+        v = F.normalize(v_vec, 2, 1)[:max_show]
+        t = F.normalize(t_vec, 2, 1)[:max_show]
+        sim = (v @ t.T).cpu().float().numpy()
+    fig, ax = plt.subplots(figsize=(4, 4))
+    im = ax.imshow(sim, vmin=-1, vmax=1, cmap="viridis")
+    ax.set_title(f"Sim matrix @ step {step}")
+    ax.set_xlabel("text idx")
+    ax.set_ylabel("vision idx")
+    fig.colorbar(im, fraction=0.046, pad=0.04)
+    buf = io.BytesIO()
+    fig.tight_layout()
+    fig.savefig(buf, format="png")
+    plt.close(fig)
+    buf.seek(0)
+    img = Image.open(buf)
+    wandb.log({tag: wandb.Image(img)}, step=step)
+
+def log_gradients(models: dict, top_n: int = 5, prefix: str = "grad"):
+    grad_stats = {}
+    for mod_name, module in models.items():
+        for name, param in module.named_parameters():
+            if param.grad is not None:
+                key = f"{mod_name}.{name}"
+                grad_stats[key] = param.grad.norm().item()
+    if not grad_stats:
+        print(" No gradients found.")
+        return
+
+    # 排序
+    sorted_stats = sorted(grad_stats.items(), key=lambda x: x[1])
+    print(f"=== {prefix} norms (lowest {top_n}) ===")
+    for k, v in sorted_stats[:top_n]:
+        print(f"{k:60s}: {v:.4e}")
+    print(f"=== {prefix} norms (highest {top_n}) ===")
+    for k, v in sorted_stats[-top_n:]:
+        print(f"{k:60s}: {v:.4e}")
 
 # ---------------------------------------------------------------------------
-# Losses
+# Loss functions
 # ---------------------------------------------------------------------------
-
 def info_nce(v, t, tau: float = 0.07):
     v = F.normalize(v, 2, 1)
     t = F.normalize(t, 2, 1)
     return F.cross_entropy(v @ t.T / tau, torch.arange(v.size(0), device=v.device))
 
-
 def ranknet(pos, neg):
     return F.softplus(neg - pos).mean()
 
-
 # ---------------------------------------------------------------------------
-# Stage 1 – contrastive pre‑training
+# Stage 1 – contrastive pre-training
 # ---------------------------------------------------------------------------
-
 def stage1(args, ds):
     print("stage1 begin…")
     dl = DataLoader(ds, args.bs, shuffle=True, drop_last=True, num_workers=4)
     txt_enc = RAGTextEncoder(args.data_jsonl, args.topk).cuda()
+    # 凍結 BERT（只訓練 GateFusion-MV）
+    for p in txt_enc.retriever.qenc.parameters():
+        p.requires_grad = False
     vis_enc = GFMVEncoder(args.views).cuda()
-
     opt = torch.optim.AdamW(
         list(txt_enc.parameters()) + list(vis_enc.parameters()), lr=args.lr1
     )
-
     for ep in range(args.ep1):
-        pbar = tqdm(dl, desc=f"Stage‑1 Epoch {ep}", unit="batch")
-        for cap, imgs, obj_id in pbar:
+        pbar = tqdm(dl, desc=f"Stage-1 Epoch {ep}", unit="batch")
+        for step, (cap, imgs, obj_id) in enumerate(pbar):
             imgs = imgs.cuda(non_blocking=True)
             t_vec, ret_loss, _ = txt_enc(list(cap), list(obj_id), return_loss=True)
-            v_vec, _ = vis_enc(imgs, t_vec)  # Gate token active
+            v_vec, _ = vis_enc(imgs, t_vec)
+            #v_vec, _ = vis_enc(imgs, None)
             loss = info_nce(v_vec, t_vec, args.tau) + args.lmb * ret_loss
-
             opt.zero_grad()
             loss.backward()
+            # log_gradients({
+            #     "qenc": txt_enc.retriever.qenc,
+            #     "kenc": txt_enc.retriever.kenc,
+            #     "gf_feat": vis_enc.feat2d
+            # })
             opt.step()
-
             pbar.set_postfix(loss=f"{loss.item():.4f}")
-            wb_log({"stage1/loss": loss.item()}, step=ep * len(dl) + pbar.n)
-
+            wb_log({"stage1/loss": loss.item()}, step=ep * len(dl) + step)
+            if step % 1000 == 0:
+                log_sim_heatmap(v_vec.detach(), t_vec.detach(), step=ep * len(dl) + step)
     os.makedirs(args.out, exist_ok=True)
-    torch.save({"txt": txt_enc.state_dict(), "vis": vis_enc.state_dict()}, f"{args.out}/enc1.pth")
+    torch.save({"txt": txt_enc.state_dict(), "vis": vis_enc.state_dict()},
+               f"{args.out}/enc1.pth")
     return txt_enc.eval(), vis_enc.eval()
 
-
 # ---------------------------------------------------------------------------
-# Build FAISS index
+# Build FAISS index (global vectors)
 # ---------------------------------------------------------------------------
 @torch.no_grad()
 def build_faiss(ds, txt_enc, vis_enc, args):
     print("build faiss…")
     dl, feats = DataLoader(ds, args.bs, num_workers=4), []
     for caps, imgs, _ in tqdm(dl, desc="Building FAISS", unit="batch"):
-        q_vec, _, _ = txt_enc(list(caps))  # text query embeddings (guides gate)
+        q_vec, _, _ = txt_enc(list(caps))
         v, _ = vis_enc(imgs.cuda(non_blocking=True), q_vec.detach())
         feats.append(F.normalize(v, 2, 1).cpu())
-
     feats = torch.cat(feats).numpy()
     index = faiss.IndexFlatIP(512)
     index.add(feats)
     return index, feats
 
+@torch.no_grad()
+def build_faiss_with_tok(ds, txt_enc, vis_enc, args):
+    print("build faiss with tokens…")
+    g_vecs, g_toks = [], []
+    dl = DataLoader(ds, args.bs, num_workers=4)
+    for caps, imgs, _ in tqdm(dl, desc="Building FAISS", unit="batch"):
+        q_vec, _, _ = txt_enc(list(caps))
+        v_vec, v_tok = vis_enc(imgs.cuda(non_blocking=True), q_vec)
+        g_vecs.append(F.normalize(v_vec, 2, 1).cpu())
+        g_toks.append(v_tok.cpu())
+    g_toks = torch.cat(g_toks).numpy().astype(np.float16)
+    np.save(f"{args.out}/vis_tok.npy", g_toks)
+    index = faiss.IndexFlatIP(512)
+    index.add(torch.cat(g_vecs).numpy())
+    return index, g_toks
 
 # ---------------------------------------------------------------------------
-# Stage 2 – reranker fine‑tuning
+# Stage 2 – reranker fine-tuning
 # ---------------------------------------------------------------------------
-
-def stage2(args, ds, txt_enc, vis_enc, index, all_v):
+def stage2(args, ds, txt_enc, vis_enc, index, all_tok):
     print("stage2 begin…")
     rerank = CrossModalReranker().cuda()
     opt = torch.optim.AdamW(rerank.parameters(), lr=args.lr2)
     dl = DataLoader(ds, args.bs, shuffle=True, drop_last=True, num_workers=4)
-
     for ep in range(args.ep2):
-        pbar = tqdm(dl, desc=f"Stage‑2 Epoch {ep}", unit="batch")
-        for cap, imgs, obj_id in pbar:
+        pbar = tqdm(dl, desc=f"Stage-2 Epoch {ep}", unit="batch")
+        for step, (cap, imgs, obj_id) in enumerate(pbar):
             cap = list(cap)
             imgs = imgs.cuda(non_blocking=True)
-
             with torch.no_grad():
-                t_vec, _, txt_tok = txt_enc(cap, list(obj_id))  # token_seq for reranker
-                _, vis_tok = vis_enc(imgs, t_vec)               # gate ON
+                t_vec, _, txt_tok = txt_enc(cap, list(obj_id))
+                _, vis_tok = vis_enc(imgs, t_vec)
                 sims, idx = index.search(t_vec.cpu().numpy(), args.L)
-
-            # positive score
-            s_pos = rerank(txt_tok, vis_tok)                   # (B,)
-
-            # negative scores from retrieved neighbors
+            s_pos = rerank(txt_tok, vis_tok)
             neg_scores = []
-            for j in range(1, args.L):
-                neg_vec = torch.from_numpy(all_v[idx[:, j]]).to(imgs.device)
-                neg_vec = neg_vec.unsqueeze(1)                # (B,1,512)
-                neg_scores.append(rerank(txt_tok, neg_vec))   # (B,)
-            s_neg = torch.stack(neg_scores, 1)                # (B,L‑1)
-
+            for j in range(1, idx.shape[1]):
+                neg_tok = torch.from_numpy(all_tok[idx[:, j]]).to(imgs.device).float()
+                neg_scores.append(rerank(txt_tok, neg_tok))
+            s_neg = torch.stack(neg_scores, 1)
             loss = ranknet(s_pos.unsqueeze(1), s_neg)
             opt.zero_grad()
             loss.backward()
             opt.step()
-
             pbar.set_postfix(loss=f"{loss.item():.4f}")
-            wb_log({"stage2/rank_loss": loss.item()}, step=(args.ep1 + ep) * len(dl) + pbar.n)
-
+            wb_log({"stage2/rank_loss": loss.item()}, step=(args.ep1 + ep) * len(dl) + step)
     torch.save(rerank.state_dict(), f"{args.out}/rerank.pth")
-
 
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
-
 def parse():
     p = argparse.ArgumentParser()
     p.add_argument("--data_jsonl", required=True)
@@ -177,20 +231,17 @@ def parse():
     p.add_argument("--lmb", type=float, default=0.1)
     p.add_argument("--lr1", type=float, default=2e-4)
     p.add_argument("--ep1", type=int, default=8)
-    p.add_argument("--L", type=int, default=50, help="# candidates per query for reranker")
+    p.add_argument("--L", type=int, default=50, help="# candidates per query for reranker")
     p.add_argument("--lr2", type=float, default=1e-4)
     p.add_argument("--ep2", type=int, default=5)
     p.add_argument("--wandb", action="store_true", help="enable wandb logging")
     return p.parse_args()
 
-
 if __name__ == "__main__":
     args = parse()
     wandb_init(args)
-
     ds = UnifiedDataset(args.data_jsonl, num_views=args.views)
     txt_enc, vis_enc = stage1(args, ds)
-    index, all_v = build_faiss(ds, txt_enc, vis_enc, args)
-    stage2(args, ds, txt_enc, vis_enc, index, all_v)
-
-    print("✓ Training done →", args.out)
+    index, all_tok = build_faiss_with_tok(ds, txt_enc, vis_enc, args)
+    stage2(args, ds, txt_enc, vis_enc, index, all_tok)
+    print(" Training done →", args.out)

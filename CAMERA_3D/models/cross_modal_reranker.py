@@ -9,7 +9,7 @@ class CrossModalReranker(nn.Module):
         self.blocks  = nn.ModuleList([
             nn.TransformerEncoderLayer(txt_dim, heads, dim_feedforward=txt_dim*4, batch_first=True)
             for _ in range(L)])
-        self.scorer = nn.Linear(txt_dim, 1)    # <‑‑ 統一名稱 scorer
+        self.scorer = nn.Linear(txt_dim, 1)    # <-- 統一名稱 scorer
 
     def forward(self, txt_tok, vis_tok):        # txt_tok (B,Tt,D) vis_tok (B,Tv,Dv)
         vis = self.map_vis(vis_tok)             # match dim

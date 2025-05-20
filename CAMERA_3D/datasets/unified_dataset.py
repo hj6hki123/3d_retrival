@@ -43,4 +43,4 @@ class UnifiedDataset(Dataset):
         
         
         
-        return query, imgs.float(), obj_id    # <‑‑ return obj_id
+        return query, imgs.float(), obj_id    # <-- return obj_id

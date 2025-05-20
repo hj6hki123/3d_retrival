@@ -1,18 +1,4 @@
 #!/usr/bin/env python
-"""
-End‑to‑end training script for **GateFusion‑MV + RAG** on text→3 D retrieval.
-──────────────────────────────────────────────────────────────────────────────
-* Stage‑1 – coarse representation learning with InfoNCE (global vectors)
-* Stage‑2 – fine reranking with RankNet (token level or shallow MLP)
-
-External modules expected in the same package:
-    • rag_text_encoder.py      – contains `RAGTextEncoder`  (retriever+fusion)
-    • gf_mv_encoder.py         – contains `GFMVEncoder`     (language‑gated MV)
-    • semantic_memory.py       – contains `SemanticMemory` (online retriever)
-
-Author:  OpenAI ChatGPT (o3) – 2025‑05‑14
-"""
-
 import os, json, random, math, faiss, torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -28,14 +14,14 @@ from semantic_memory   import SemanticMemory     # noqa
 # 0.  DATASET  (jsonl => caption + V renders)
 # ════════════════════════════════════════════════════════════════════════
 class MultiViewObjaverse(Dataset):
-    """每筆樣本: { "caption": str, "render_paths": [img0 … imgV‑1] }"""
+    """每筆樣本: { "caption": str, "render_paths": [img0 … imgV-1] }"""
 
     def __init__(self, jsonl_path: str, num_views: int = 12, image_size: int = 224):
-        self.recs = [json.loads(l) for l in open(jsonl_path, "r", encoding="utf‑8")]
+        self.recs = [json.loads(l) for l in open(jsonl_path, "r", encoding="utf-8")]
         self.num_views = num_views
         self.tr = transforms.Compose([
             transforms.Resize((image_size, image_size)),
-            transforms.ToTensor()   # range 0‑1
+            transforms.ToTensor()   # range 0-1
         ])
 
     def __len__(self):
@@ -66,7 +52,7 @@ def ranknet_loss(pos: torch.Tensor, neg: torch.Tensor) -> torch.Tensor:
     return F.softplus(neg - pos).mean()
 
 # ════════════════════════════════════════════════════════════════════════
-# 2.  RERANKER (可換成 cross‑attention 版本)
+# 2.  RERANKER (可換成 cross-attention 版本)
 # ════════════════════════════════════════════════════════════════════════
 class SimpleReranker(nn.Module):
     def __init__(self, dim: int = 512):
@@ -85,7 +71,7 @@ class SimpleReranker(nn.Module):
 # ════════════════════════════════════════════════════════════════════════
 @torch.no_grad()
 def build_visual_index(dataloader: DataLoader, vis_enc: GFMVEncoder) -> faiss.IndexFlatIP:
-    """離線將整個 3‑D 資料集 encode → FAISS 內積索引 (cosine)"""
+    """離線將整個 3-D 資料集 encode → FAISS 內積索引 (cosine)"""
     vecs = []
     for _, imgs in dataloader:
         vis_vec, _ = vis_enc(imgs.cuda(), None)   # (B,512)
@@ -103,11 +89,11 @@ class CFG:
     train_jsonl = "train_meta.jsonl"
     batch_size  = 8
     num_views   = 12
-    # stage‑1
+    # stage-1
     lr1     = 2e-4
     epochs1 = 8
     tau     = 0.07
-    # stage‑2
+    # stage-2
     L       = 50
     lr2     = 1e-4
     epochs2 = 5
@@ -137,12 +123,12 @@ def train_stage1(cfg: CFG):
         print(f"[Stage1 E{epoch}] InfoNCE={loss.item():.4f}")
 
     torch.save({"txt": txt_enc.state_dict(), "vis": vis_enc.state_dict()}, cfg.ckpt_stage1)
-    print("✓ Stage‑1 encoders saved →", cfg.ckpt_stage1)
+    print("✓ Stage-1 encoders saved →", cfg.ckpt_stage1)
     return txt_enc, vis_enc
 
 
 def train_stage2(cfg: CFG, txt_enc: RAGTextEncoder, vis_enc: GFMVEncoder):
-    # 冻结 encoder（先精排）
+    # 凍結 encoder（先精排）
     txt_enc.eval(); vis_enc.eval()
     for p in txt_enc.parameters(): p.requires_grad = False
     for p in vis_enc.parameters(): p.requires_grad = False
@@ -176,15 +162,15 @@ def train_stage2(cfg: CFG, txt_enc: RAGTextEncoder, vis_enc: GFMVEncoder):
         print(f"[Stage2 E{epoch}] RankNet={loss.item():.4f}")
 
     torch.save(rerank.state_dict(), cfg.ckpt_rerank)
-    print("✓ Stage‑2 reranker saved →", cfg.ckpt_rerank)
+    print("✓ Stage-2 reranker saved →", cfg.ckpt_rerank)
 
 # ════════════════════════════════════════════════════════════════════════
 # 5.  main
 # ════════════════════════════════════════════════════════════════════════
 if __name__ == "__main__":
     cfg = CFG()
-    # Stage‑1
+    #  Stage-1
     txt_enc, vis_enc = train_stage1(cfg)
-    # Stage‑2
+    #  Stage-2
     train_stage2(cfg, txt_enc, vis_enc)
     print("✔ 全流程訓練完成")

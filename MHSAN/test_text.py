@@ -132,7 +132,7 @@ if __name__ == "__main__":
     qvec  = encode_text(query)
     sims  = torch.matmul(qvec, gallery_feats.T).squeeze(0)
     topk  = torch.topk(sims, 5)
-    print("── Top‑5 ──")
+    print("── Top-5 ──")
     for idx,s in zip(topk.indices.tolist(),topk.values.tolist()):
         print(f"{idx:4d} | {label2category[gallery_labels[idx]]:>8s} | {s:.4f}")
 
@@ -145,4 +145,4 @@ if __name__ == "__main__":
         txt_feats.append( encode_text(label2category[int(lbl)]) )
     txt_feats = torch.cat(txt_feats,0)
     mAP_c = compute_map_crossmodal(txt_feats, gallery_labels, gallery_feats, gallery_labels)
-    print(f"[cross‑modal  mAP] {mAP_c:.4f}")
+    print(f"[cross-modal  mAP] {mAP_c:.4f}")
