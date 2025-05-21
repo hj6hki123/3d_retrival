@@ -4,6 +4,7 @@
 *.pyc
 *.index
 *.meta
+*.zip
 *.json
 *.jsonl
 **/__pycache__/
@@ -12,6 +13,7 @@
 **/data/
 objaverse-rendering
 **/wandb/
+**/views/
 # **/models/
 /home/klooom/cheng/3d_retrival/MHSAN/models/
 **/gallery/

@@ -22,6 +22,10 @@ from datasets.unified_dataset import UnifiedDataset
 from models.rag_text_encoder import RAGTextEncoder
 from models.gf_mv_encoder import GFMVEncoder
 from models.cross_modal_reranker import CrossModalReranker
+from utils.checks import (assert_valid,
+                          check_gradients,
+                          stable_rank_loss,
+                          xavier_init)
 
 # ---------------------------------------------------------------------------
 # Optional wandb (lazy import + graceful fallback)
@@ -137,6 +141,7 @@ def stage1(args, ds):
             v_vec, _ = vis_enc(imgs, t_vec)
             #v_vec, _ = vis_enc(imgs, None)
             loss = info_nce(v_vec, t_vec, args.tau) + args.lmb * ret_loss
+            assert_valid(loss, "stage1_loss")
             opt.zero_grad()
             loss.backward()
             # log_gradients({
@@ -181,6 +186,7 @@ def build_faiss_with_tok(ds, txt_enc, vis_enc, args):
         g_vecs.append(F.normalize(v_vec, 2, 1).cpu())
         g_toks.append(v_tok.cpu())
     g_toks = torch.cat(g_toks).numpy().astype(np.float16)
+    assert_valid(torch.from_numpy(g_toks), "vis_tok_np")
     np.save(f"{args.out}/vis_tok.npy", g_toks)
     index = faiss.IndexFlatIP(512)
     index.add(torch.cat(g_vecs).numpy())
@@ -192,6 +198,7 @@ def build_faiss_with_tok(ds, txt_enc, vis_enc, args):
 def stage2(args, ds, txt_enc, vis_enc, index, all_tok):
     print("stage2 begin…")
     rerank = CrossModalReranker().cuda()
+    rerank.apply(xavier_init)                     
     opt = torch.optim.AdamW(rerank.parameters(), lr=args.lr2)
     dl = DataLoader(ds, args.bs, shuffle=True, drop_last=True, num_workers=4)
     for ep in range(args.ep2):
@@ -209,9 +216,12 @@ def stage2(args, ds, txt_enc, vis_enc, index, all_tok):
                 neg_tok = torch.from_numpy(all_tok[idx[:, j]]).to(imgs.device).float()
                 neg_scores.append(rerank(txt_tok, neg_tok))
             s_neg = torch.stack(neg_scores, 1)
-            loss = ranknet(s_pos.unsqueeze(1), s_neg)
+            ## loss = ranknet(s_pos.unsqueeze(1), s_neg)
+            loss = stable_rank_loss(s_pos, s_neg)
+            assert_valid(loss, "stage2_loss")  
             opt.zero_grad()
             loss.backward()
+            check_gradients(rerank, top_n=2)
             opt.step()
             pbar.set_postfix(loss=f"{loss.item():.4f}")
             wb_log({"stage2/rank_loss": loss.item()}, step=(args.ep1 + ep) * len(dl) + step)
@@ -235,13 +245,25 @@ def parse():
     p.add_argument("--lr2", type=float, default=1e-4)
     p.add_argument("--ep2", type=int, default=5)
     p.add_argument("--wandb", action="store_true", help="enable wandb logging")
+    p.add_argument("--resume_enc1", type=str, default=None,
+               help="Path to saved Stage-1 encoder weights (skip training)")
     return p.parse_args()
 
 if __name__ == "__main__":
     args = parse()
     wandb_init(args)
     ds = UnifiedDataset(args.data_jsonl, num_views=args.views)
-    txt_enc, vis_enc = stage1(args, ds)
+    if args.resume_enc1: ## load stage model
+        print(f"Loading Stage-1 weights from {args.resume_enc1} ...")
+        state = torch.load(args.resume_enc1, map_location="cuda")
+        txt_enc = RAGTextEncoder(args.data_jsonl, args.topk).cuda()
+        vis_enc = GFMVEncoder(args.views).cuda()
+        txt_enc.load_state_dict(state["txt"])
+        vis_enc.load_state_dict(state["vis"])
+        txt_enc.eval(); vis_enc.eval()
+    else:
+        txt_enc, vis_enc = stage1(args, ds)
+
     index, all_tok = build_faiss_with_tok(ds, txt_enc, vis_enc, args)
     stage2(args, ds, txt_enc, vis_enc, index, all_tok)
     print(" Training done →", args.out)
