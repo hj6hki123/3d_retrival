@@ -177,20 +177,48 @@ def build_faiss(ds, txt_enc, vis_enc, args):
 
 @torch.no_grad()
 def build_faiss_with_tok(ds, txt_enc, vis_enc, args):
-    print("build faiss with tokens…")
+    """
+    若 {args.out}/faiss_index.bin 與 vis_tok.npy 已存在 → 直接讀取
+    否則重新計算並存檔（index, tokens）
+    """
+    idx_path = os.path.join(args.out, "faiss_index.bin")
+    tok_path = os.path.join(args.out, "vis_tok.npy")
+
+    # -------- 1. 嘗試讀取 --------
+    if os.path.isfile(idx_path) and os.path.isfile(tok_path):
+        print(f"✓ Load cached FAISS index & tokens from {args.out}")
+        index   = faiss.read_index(idx_path, faiss.IO_FLAG_MMAP)
+        all_tok = np.load(tok_path)
+        assert_valid(torch.from_numpy(all_tok), "loaded_vis_tok")
+        return index, all_tok
+
+    # -------- 2. 建立 --------
+    print("✗ Cache not found → building FAISS index & tokens ...")
     g_vecs, g_toks = [], []
     dl = DataLoader(ds, args.bs, num_workers=4)
+
     for caps, imgs, _ in tqdm(dl, desc="Building FAISS", unit="batch"):
         q_vec, _, _ = txt_enc(list(caps))
         v_vec, v_tok = vis_enc(imgs.cuda(non_blocking=True), q_vec)
+
         g_vecs.append(F.normalize(v_vec, 2, 1).cpu())
+        v_tok = F.normalize(v_tok, 2, -1)          # token L2-norm
         g_toks.append(v_tok.cpu())
-    g_toks = torch.cat(g_toks).numpy().astype(np.float16)
-    assert_valid(torch.from_numpy(g_toks), "vis_tok_np")
-    np.save(f"{args.out}/vis_tok.npy", g_toks)
+
+    # ---- 存 tokens ----
+    all_tok = torch.cat(g_toks).numpy().astype(np.float16)
+    assert_valid(torch.from_numpy(all_tok), "vis_tok_np")
+    os.makedirs(args.out, exist_ok=True)
+    np.save(tok_path, all_tok)
+
+    # ---- 建 & 存 FAISS ----
     index = faiss.IndexFlatIP(512)
     index.add(torch.cat(g_vecs).numpy())
-    return index, g_toks
+    faiss.write_index(index, idx_path)            
+    print(f"✓ Saved faiss_index.bin & vis_tok.npy to {args.out}")
+
+    return index, all_tok
+
 
 # ---------------------------------------------------------------------------
 # Stage 2 – reranker fine-tuning
@@ -209,6 +237,7 @@ def stage2(args, ds, txt_enc, vis_enc, index, all_tok):
             with torch.no_grad():
                 t_vec, _, txt_tok = txt_enc(cap, list(obj_id))
                 _, vis_tok = vis_enc(imgs, t_vec)
+                vis_tok = F.normalize(vis_tok, 2, -1)
                 sims, idx = index.search(t_vec.cpu().numpy(), args.L)
             s_pos = rerank(txt_tok, vis_tok)
             neg_scores = []
