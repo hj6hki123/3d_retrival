@@ -162,18 +162,18 @@ def stage1(args, ds):
 # ---------------------------------------------------------------------------
 # Build FAISS index (global vectors)
 # ---------------------------------------------------------------------------
-@torch.no_grad()
-def build_faiss(ds, txt_enc, vis_enc, args):
-    print("build faiss…")
-    dl, feats = DataLoader(ds, args.bs, num_workers=4), []
-    for caps, imgs, _ in tqdm(dl, desc="Building FAISS", unit="batch"):
-        q_vec, _, _ = txt_enc(list(caps))
-        v, _ = vis_enc(imgs.cuda(non_blocking=True), q_vec.detach())
-        feats.append(F.normalize(v, 2, 1).cpu())
-    feats = torch.cat(feats).numpy()
-    index = faiss.IndexFlatIP(512)
-    index.add(feats)
-    return index, feats
+# @torch.no_grad()
+# def build_faiss(ds, txt_enc, vis_enc, args):
+#     print("build faiss…")
+#     dl, feats = DataLoader(ds, args.bs, num_workers=4), []
+#     for caps, imgs, _ in tqdm(dl, desc="Building FAISS", unit="batch"):
+#         q_vec, _, _ = txt_enc(list(caps))
+#         v, _ = vis_enc(imgs.cuda(non_blocking=True), q_vec.detach())
+#         feats.append(F.normalize(v, 2, 1).cpu())
+#     feats = torch.cat(feats).numpy()
+#     index = faiss.IndexFlatIP(512)
+#     index.add(feats)
+#     return index, feats
 
 @torch.no_grad()
 def build_faiss_with_tok(ds, txt_enc, vis_enc, args):
@@ -195,7 +195,7 @@ def build_faiss_with_tok(ds, txt_enc, vis_enc, args):
     # -------- 2. 建立 --------
     print("✗ Cache not found → building FAISS index & tokens ...")
     g_vecs, g_toks = [], []
-    dl = DataLoader(ds, args.bs, num_workers=4)
+    dl = DataLoader(ds, args.bs, num_workers=4, shuffle=False)
 
     for caps, imgs, _ in tqdm(dl, desc="Building FAISS", unit="batch"):
         q_vec, _, _ = txt_enc(list(caps))
@@ -229,6 +229,7 @@ def stage2(args, ds, txt_enc, vis_enc, index, all_tok):
     rerank.apply(xavier_init)                     
     opt = torch.optim.AdamW(rerank.parameters(), lr=args.lr2)
     dl = DataLoader(ds, args.bs, shuffle=True, drop_last=True, num_workers=4)
+    criterion = torch.nn.MarginRankingLoss(margin=0.2)
     for ep in range(args.ep2):
         pbar = tqdm(dl, desc=f"Stage-2 Epoch {ep}", unit="batch")
         for step, (cap, imgs, obj_id) in enumerate(pbar):
@@ -245,15 +246,22 @@ def stage2(args, ds, txt_enc, vis_enc, index, all_tok):
                 neg_tok = torch.from_numpy(all_tok[idx[:, j]]).to(imgs.device).float()
                 neg_scores.append(rerank(txt_tok, neg_tok))
             s_neg = torch.stack(neg_scores, 1)
-            ## loss = ranknet(s_pos.unsqueeze(1), s_neg)
-            loss = stable_rank_loss(s_pos, s_neg)
-            assert_valid(loss, "stage2_loss")  
+            #loss = stable_rank_loss(s_pos, s_neg)
+            #loss = ranknet(s_pos.unsqueeze(1), s_neg)
+            target = torch.ones_like(s_neg)   
+            loss   = criterion(s_pos.unsqueeze(1), s_neg, target)
+            
+            
+            #assert_valid(loss, "stage2_loss")  
             opt.zero_grad()
             loss.backward()
-            check_gradients(rerank, top_n=2)
+            #check_gradients(rerank, top_n=2)
             opt.step()
             pbar.set_postfix(loss=f"{loss.item():.4f}")
             wb_log({"stage2/rank_loss": loss.item()}, step=(args.ep1 + ep) * len(dl) + step)
+            if ep==0 and step%500==0:
+                print(f"[Epoch0 Step{step}] pos_mean={s_pos.mean():.4f}, neg_mean={s_neg.mean():.4f}, loss={loss.item():.4f}")
+    
     torch.save(rerank.state_dict(), f"{args.out}/rerank.pth")
 
 # ---------------------------------------------------------------------------
@@ -270,8 +278,8 @@ def parse():
     p.add_argument("--lmb", type=float, default=0.1)
     p.add_argument("--lr1", type=float, default=2e-4)
     p.add_argument("--ep1", type=int, default=8)
-    p.add_argument("--L", type=int, default=50, help="# candidates per query for reranker")
-    p.add_argument("--lr2", type=float, default=1e-4)
+    p.add_argument("--L", type=int, default=100, help="# candidates per query for reranker")
+    p.add_argument("--lr2", type=float, default=3e-4)
     p.add_argument("--ep2", type=int, default=5)
     p.add_argument("--wandb", action="store_true", help="enable wandb logging")
     p.add_argument("--resume_enc1", type=str, default=None,
