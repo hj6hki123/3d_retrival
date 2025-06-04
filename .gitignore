@@ -9,6 +9,7 @@
 *.jsonl
 **/__pycache__/
 *.log
+*.bin
 *.tmp
 **/data/
 objaverse-rendering
